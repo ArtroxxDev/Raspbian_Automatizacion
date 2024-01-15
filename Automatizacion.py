@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from datetime import datetime
 import subprocess
+from getpass import getpass
 
 class RaspberryControlApp:
     def __init__(self, root):
@@ -40,23 +41,20 @@ class RaspberryControlApp:
             self.show_error("Formato de hora incorrecto (HH:MM)")
             return
 
-        # Solicitar permisos de superusuario
-        sudo_password = self.get_sudo_password()
-
         # Configurar las tareas programadas usando crontab con sudo
-        crontab_command_encendido = f"{encendido_time} sudo /usr/bin/python3 {__file__} encendido"
-        crontab_command_apagado = f"{apagado_time} sudo /usr/bin/python3 {__file__} apagado"
+        crontab_command_encendido = f"{encendido_time} /usr/bin/python3 {__file__} encendido"
+        crontab_command_apagado = f"{apagado_time} /usr/bin/python3 {__file__} apagado"
 
-        subprocess.run(["echo", f"{sudo_password}", "|", "sudo", "-S", "crontab", "-l"], check=True)
-        subprocess.run(["echo", f"{crontab_command_encendido}", "|", "sudo", "-S", "crontab", "-"], check=True)
-        subprocess.run(["echo", f"{crontab_command_apagado}", "|", "sudo", "-S", "crontab", "-"], check=True)
+        self.execute_with_sudo(["crontab", "-l"])
+        self.execute_with_sudo(["echo", f"{crontab_command_encendido}", "|", "crontab", "-"])
+        self.execute_with_sudo(["echo", f"{crontab_command_apagado}", "|", "crontab", "-"])
 
         self.show_message("Tareas programadas correctamente")
 
-    def get_sudo_password(self):
-        # Función para solicitar la contraseña de sudo
-        password = tk.simpledialog.askstring("Contraseña de Superusuario", "Ingrese la contraseña de superusuario:", show='*')
-        return password
+    def execute_with_sudo(self, command):
+        sudo_password = getpass("Ingrese la contraseña de superusuario: ")
+        command = ["sudo", "-S"] + command
+        subprocess.run(command, input=sudo_password.encode(), text=True, check=True)
 
     def show_error(self, message):
         tk.messagebox.showerror("Error", message)
@@ -69,3 +67,4 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = RaspberryControlApp(root)
     root.mainloop()
+
